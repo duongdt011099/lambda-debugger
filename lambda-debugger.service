@@ -1,0 +1,16 @@
+[Unit]
+Description=Lambda Debugger - Debug AWS Lambda Functions Locally
+After=network.target
+
+[Service]
+Type=simple
+User=%u
+WorkingDirectory=%h/Documents/lambda-debugger
+ExecStart=/usr/bin/env node %h/Documents/lambda-debugger/cli.js start
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

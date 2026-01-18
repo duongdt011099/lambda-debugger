@@ -5,8 +5,12 @@ services:
     build: .
     ports:
       - "4000:4000"
+      - "9229:9229"
     volumes:
-      - .:/app
+      # Mount your Lambda projects here so debugger can access them
+      # Example: ./my-lambda:/home/my-lambda
+      # Then invoke: /home/my-lambda/handler.js:functionName
+      - ./:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development

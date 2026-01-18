@@ -4,7 +4,13 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
+
+// Logging utility
+function log(...args) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}]`, ...args);
+}
 
 /**
  * Middleware
@@ -64,6 +70,7 @@ app.post('/invoke', async (req, res) => {
       return res.status(400).json({ error: 'handlerPath is required' });
     }
 
+    log(`Invoking handler: ${handlerPath}`);
     const handler = loadHandler(handlerPath);
 
     const context = {
@@ -78,12 +85,14 @@ app.post('/invoke', async (req, res) => {
 
     const result = await handler(event, context);
 
+    log(`✓ Handler invoked successfully`);
     res.json({
       success: true,
       result
     });
   } catch (err) {
-    console.error('Invocation error:', err);
+    log(`✗ Invocation error: ${err.message}`);
+    console.error(err);
     res.status(500).json({
       success: false,
       error: err.message,
@@ -100,10 +109,27 @@ app.get('/health', (_req, res) => {
 });
 
 /**
- * Start server
+ * Start server with Inspector Protocol support
  */
+const inspector = require('inspector');
+
 app.listen(PORT, () => {
-  console.log(`Lambda Debugger running`);
-  console.log(`UI:      http://localhost:${PORT}`);
-  console.log(`Invoke:  POST http://localhost:${PORT}/invoke`);
+  log('='.repeat(50));
+  log('Lambda Debugger - Background Service');
+  log('='.repeat(50));
+  log(`UI:        http://localhost:${PORT}`);
+  log(`API:       POST http://localhost:${PORT}/invoke`);
+  log(`Health:    GET http://localhost:${PORT}/health`);
+  
+  // Inspector/debugger info
+  if (process.env.NODE_OPTIONS?.includes('--inspect')) {
+    log(`Debugger:  Ready (attach VS Code to debug)`);
+  } else {
+    log(`Note: Start with --inspect flag to enable VS Code debugging:`);
+    log(`      node --inspect server.js`);
+  }
+  
+  log('='.repeat(50));
+  log('Manage daemon: lambda-debugger [start|stop|status|restart]');
+  log('='.repeat(50));
 });
