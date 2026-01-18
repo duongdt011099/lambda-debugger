@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lambda Debugger</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap CDN -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <style>
+    textarea,
+    pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 1rem;
+      border-radius: 0.375rem;
+      max-height: 400px;
+      overflow: auto;
+    }
+  </style>
+</head>
+
+<body class="bg-light">
+  <div class="container py-4">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+
+        <h1 class="mb-4">Lambda Debugger</h1>
+
+        <!-- Handler Path -->
+        <div class="mb-3">
+          <label for="handlerPath" class="form-label">
+            Handler path
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            id="handlerPath"
+            placeholder="/abs/path/to/lambda/src/handler.js:handler"
+          />
+          <div class="form-text">
+            Absolute file path + exported handler name
+          </div>
+        </div>
+
+        <!-- Event Payload -->
+        <div class="mb-3">
+          <label for="event" class="form-label">
+            Event payload (JSON)
+          </label>
+          <textarea
+            class="form-control"
+            id="event"
+            rows="14"
+          >{}</textarea>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 mb-4">
+          <button class="btn btn-primary" onclick="invoke()">
+            Invoke
+          </button>
+          <button class="btn btn-outline-secondary" onclick="clearOutput()">
+            Clear Output
+          </button>
+        </div>
+
+        <!-- Output -->
+        <div>
+          <label class="form-label">Result</label>
+          <pre id="output" class="text-body-secondary">Idle</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const output = document.getElementById('output');
+
+    function clearOutput() {
+      output.textContent = 'Idle';
+      output.className = 'text-body-secondary';
+    }
+
+    async function invoke() {
+      output.textContent = 'Invoking...';
+      output.className = 'text-muted';
+
+      let event;
+      try {
+        event = JSON.parse(document.getElementById('event').value);
+      } catch (err) {
+        output.textContent = 'Invalid JSON payload';
+        output.className = 'text-danger';
+        return;
+      }
+
+      const handlerPath = document.getElementById('handlerPath').value.trim();
+      if (!handlerPath) {
+        output.textContent = 'Handler path is required';
+        output.className = 'text-danger';
+        return;
+      }
+
+      try {
+        const res = await fetch('/invoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handlerPath, event })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Invocation failed');
+        }
+
+        output.textContent = JSON.stringify(data, null, 2);
+        output.className = 'text-success';
+      } catch (err) {
+        output.textContent = err.stack || err.toString();
+        output.className = 'text-danger';
+      }
+    }
+  </script>
+</body>
+</html>
