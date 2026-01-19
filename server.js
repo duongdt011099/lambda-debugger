@@ -22,42 +22,8 @@ app.use(bodyParser.json({ limit: '5mb' }));
  */
 app.use('/', express.static(path.join(__dirname, 'ui')));
 
-/**
- * Utility: load lambda handler dynamically
- * handlerSpec format:
- *   /absolute/path/to/file.js:handler
- */
-function loadHandler(handlerSpec) {
-  if (!handlerSpec || typeof handlerSpec !== 'string') {
-    throw new Error('handlerPath must be a string');
-  }
-
-  const parts = handlerSpec.split(':');
-  if (parts.length !== 2) {
-    throw new Error(
-      'Invalid handlerPath. Expected format: /abs/path/file.js:exportName'
-    );
-  }
-
-  const filePath = path.resolve(parts[0]);
-  const exportName = parts[1];
-
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`Handler file not found: ${filePath}`);
-  }
-
-  // Hot reload: clear require cache
-  delete require.cache[require.resolve(filePath)];
-
-  const moduleExports = require(filePath);
-
-  const handler = moduleExports[exportName];
-  if (typeof handler !== 'function') {
-    throw new Error(`Export "${exportName}" is not a function`);
-  }
-
-  return handler;
-}
+// Use loader.js for handler loading
+const { loadHandler } = require('./loader.js');
 
 /**
  * Invoke Lambda handler
@@ -71,7 +37,16 @@ app.post('/invoke', async (req, res) => {
     }
 
     log(`Invoking handler: ${handlerPath}`);
-    const handler = loadHandler(handlerPath);
+    let handler;
+    try {
+      handler = await loadHandler(handlerPath);
+    } catch (err) {
+      // Match error message for invalid handler spec
+      if (err.message && err.message.includes('Invalid handler spec')) {
+        throw new Error('Invalid handlerPath. Expected format: /abs/path/file.js or .mjs:exportName');
+      }
+      throw err;
+    }
 
     const context = {
       functionName: handlerPath,
